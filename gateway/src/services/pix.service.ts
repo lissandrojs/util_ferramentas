@@ -1,5 +1,5 @@
-import QRCode from 'qrcode';
-import { buildPixPayload } from '../utils/licenseUtils';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const QRCode = require('qrcode') as typeof import('qrcode');import { buildPixPayload } from '../utils/licenseUtils';
 import { logger } from '../utils/logger';
 
 export type PixGateway = 'static' | 'asaas' | 'efipay';

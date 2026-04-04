@@ -7,8 +7,8 @@ import helmet from 'helmet';
 import cors from 'cors';
 import { Pool } from 'pg';
 import { nanoid } from 'nanoid';
-import QRCode from 'qrcode';
-import { z } from 'zod';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const QRCode = require('qrcode') as typeof import('qrcode');import { z } from 'zod';
 import winston from 'winston';
 
 // ── Logger ─────────────────────────────────────────────
