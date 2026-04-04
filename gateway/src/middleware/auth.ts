@@ -143,14 +143,16 @@ export function requireAppAccess(appKey: string) {
 
 // ── Token generation utilities ─────────────────────────
 export function generateTokens(payload: Omit<JwtPayload, 'iat' | 'exp'>) {
-  const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const accessToken = jwt.sign(payload as any, process.env.JWT_SECRET!, {
+    expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as any,
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const refreshToken = jwt.sign(
     { sub: payload.sub },
     process.env.JWT_SECRET!,
-    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d' }
+    { expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN || '30d') as any }
   );
 
   return { accessToken, refreshToken };

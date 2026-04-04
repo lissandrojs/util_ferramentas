@@ -17,7 +17,7 @@ class Database {
     });
 
     this.pool.on('error', (err) => {
-      logger.error(err, 'Unexpected database pool error');
+      logger.error('Unexpected database pool error: ' + err.message);
     });
   }
 
@@ -36,7 +36,7 @@ class Database {
     const duration = Date.now() - start;
 
     if (duration > 1000) {
-      logger.warn({ duration, query: text }, 'Slow query detected');
+      logger.warn(`Slow query detected (${duration}ms): ${text}`);
     }
 
     return result.rows as T[];

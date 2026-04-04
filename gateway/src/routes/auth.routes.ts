@@ -45,19 +45,21 @@ authRouter.post('/register', async (req: Request, res: Response) => {
       ? tenantName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
       : email.split('@')[0];
 
-    const [tenant] = await client.query<{ id: string }>(
+    const tenantResult = await client.query<{ id: string }>(
       `INSERT INTO tenants (name, slug, plan)
        VALUES ($1, $2, 'free')
        RETURNING id`,
       [tenantName || `${name}'s Workspace`, slug]
     );
+    const tenant = tenantResult.rows[0];
 
-    const [user] = await client.query<{ id: string }>(
+    const userResult = await client.query<{ id: string }>(
       `INSERT INTO users (tenant_id, email, password_hash, name, role)
        VALUES ($1, $2, $3, $4, 'admin')
        RETURNING id`,
       [tenant.id, email, passwordHash, name]
     );
+    const user = userResult.rows[0];
 
     const tokens = generateTokens({
       sub: user.id,

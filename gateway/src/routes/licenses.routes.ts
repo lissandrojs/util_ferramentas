@@ -182,7 +182,13 @@ licenseAdminRouter.post('/licenses', async (req: Request, res: Response) => {
   const body = schema.safeParse(req.body);
   if (!body.success) throw new AppError(body.error.errors[0].message, 400, 'VALIDATION_ERROR');
 
-  const license = await createLicense(body.data);
+  const license = await createLicense({
+    productId:     body.data.product_id,
+    customerName:  body.data.customer_name,
+    customerEmail: body.data.customer_email,
+    customerDoc:   body.data.customer_doc,
+    notes:         body.data.notes,
+  });
 
   if (body.data.activate_now) {
     const activated = await activateLicense(license.id, req.user?.email || 'admin');

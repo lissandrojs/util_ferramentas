@@ -56,7 +56,7 @@ function errorHandler(
     });
   }
 
-  logger.error({ err, path: req.path, method: req.method }, 'Unhandled error');
+  logger.error(`Unhandled error on ${req.method} ${req.path}: ${(err as Error).message}`);
 
   return res.status(500).json({
     success: false,

@@ -132,7 +132,7 @@ export async function activateLicense(
   await logEvent(licenseId, 'activated', actor,
     `License activated${expiresAt ? ` — expires ${expiresAt.toLocaleDateString('pt-BR')}` : ' (perpetual)'}`);
 
-  logger.info({ licenseId, key: updated.license_key, actor }, '✅ License activated');
+  logger.info(`✅ License activated — id: ${licenseId}, key: ${updated.license_key}, by: ${actor}`);
   return updated;
 }
 

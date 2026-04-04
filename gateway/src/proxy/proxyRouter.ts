@@ -1,5 +1,7 @@
 import { Express, Request, Response, NextFunction } from 'express';
 import { createProxyMiddleware, Options } from 'http-proxy-middleware';
+import { ClientRequest, IncomingMessage, ServerResponse } from 'http';
+import { Socket } from 'net';
 import { authenticate, requireAppAccess } from '../middleware/auth';
 import { logger } from '../utils/logger';
 
@@ -12,14 +14,12 @@ interface AppConfig {
   description: string;
 }
 
-// ── Registered apps registry ────────────────────────────
-// To add a new app: add an entry here + set env var
 export const APP_REGISTRY: AppConfig[] = [
   {
     key: 'app1',
     pathPrefix: '/app1',
     target: process.env.APP1_DASHBOARD_URL || 'http://localhost:5173',
-    protected: false,        // auth handled inside app1 itself
+    protected: false,
     description: 'Admin Dashboard',
   },
   {
@@ -32,35 +32,36 @@ export const APP_REGISTRY: AppConfig[] = [
   },
 ];
 
-function buildProxyOptions(app: AppConfig): Options {
+function buildProxyOptions(appConfig: AppConfig): Options {
   return {
-    target: app.target,
+    target: appConfig.target,
     changeOrigin: true,
-    pathRewrite: (path) => path.replace(new RegExp(`^${app.pathPrefix}`), ''),
+    pathRewrite: (path: string) =>
+      path.replace(new RegExp('^' + appConfig.pathPrefix), ''),
     on: {
-      proxyReq: (proxyReq, req: Request) => {
-        // Forward user context headers to upstream services
-        if (req.user) {
-          proxyReq.setHeader('X-User-ID', req.user.sub);
-          proxyReq.setHeader('X-Tenant-ID', req.user.tenantId);
-          proxyReq.setHeader('X-User-Role', req.user.role);
-          proxyReq.setHeader('X-User-Plan', req.user.plan);
-          proxyReq.setHeader('X-User-Email', req.user.email);
+      proxyReq: (proxyReq: ClientRequest, req: IncomingMessage) => {
+        const expressReq = req as unknown as Request;
+        if (expressReq.user) {
+          proxyReq.setHeader('X-User-ID', expressReq.user.sub);
+          proxyReq.setHeader('X-Tenant-ID', expressReq.user.tenantId);
+          proxyReq.setHeader('X-User-Role', expressReq.user.role);
+          proxyReq.setHeader('X-User-Plan', expressReq.user.plan);
+          proxyReq.setHeader('X-User-Email', expressReq.user.email);
         }
-
         const requestId = (req.headers['x-request-id'] as string) || '';
         proxyReq.setHeader('X-Request-ID', requestId);
-        proxyReq.setHeader('X-Forwarded-App', app.key);
+        proxyReq.setHeader('X-Forwarded-App', appConfig.key);
       },
-      error: (err, _req, res) => {
-        logger.error({ err, app: app.key }, `Proxy error for ${app.key}`);
-        const httpRes = res as Response;
-        if (!httpRes.headersSent) {
-          httpRes.status(502).json({
+      error: (err: Error, _req: IncomingMessage, res: ServerResponse | Socket) => {
+        logger.error('Proxy error for ' + appConfig.key + ': ' + err.message);
+        // Socket is used for WebSocket upgrades — only write HTTP response on ServerResponse
+        if (res instanceof ServerResponse && !res.headersSent) {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
             success: false,
-            error: `Service ${app.description} is temporarily unavailable`,
+            error: 'Service ' + appConfig.description + ' is temporarily unavailable',
             code: 'UPSTREAM_ERROR',
-          });
+          }));
         }
       },
     },
@@ -71,23 +72,22 @@ export function setupProxy(app: Express): void {
   for (const appConfig of APP_REGISTRY) {
     const middlewares: Array<(req: Request, res: Response, next: NextFunction) => void> = [];
 
-    // ── Apply auth middleware if app is protected ─────────
     if (appConfig.protected) {
       middlewares.push(authenticate);
       middlewares.push(requireAppAccess(appConfig.key));
     }
 
-    // ── Mount the proxy ────────────────────────────────────
     const proxy = createProxyMiddleware(buildProxyOptions(appConfig));
 
     app.use(
       appConfig.pathPrefix,
       ...middlewares,
-      proxy as unknown as (req: Request, res: Response, next: NextFunction) => void
+      proxy as unknown as (req: Request, res: Response, next: NextFunction) => void,
     );
 
     logger.info(
-      `🔁 Proxy: ${appConfig.pathPrefix} → ${appConfig.target} [${appConfig.protected ? '🔒 protected' : '🔓 public'}]`
+      '🔁 Proxy: ' + appConfig.pathPrefix + ' → ' + appConfig.target +
+      ' [' + (appConfig.protected ? '🔒 protected' : '🔓 public') + ']'
     );
   }
 }

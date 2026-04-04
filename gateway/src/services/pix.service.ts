@@ -32,7 +32,7 @@ export async function createPixCharge(params: {
   txId: string;           // our internal reference (license ID prefix)
 }): Promise<PixChargeResult> {
   const gateway = detectGateway();
-  logger.info({ gateway, amount: params.amountCents }, 'Creating PIX charge');
+  logger.info(`Creating PIX charge — gateway: ${gateway}, amount: ${params.amountCents}`);
 
   switch (gateway) {
     case 'asaas':  return createAsaasCharge(params);
@@ -142,7 +142,7 @@ async function createAsaasCharge(params: {
   };
 
   if (!charge.id) {
-    logger.error({ charge }, 'Asaas charge creation failed');
+    logger.error('Asaas charge creation failed: ' + JSON.stringify(charge));
     throw new Error('Failed to create Asaas charge');
   }
 
