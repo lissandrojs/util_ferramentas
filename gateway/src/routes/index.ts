@@ -47,4 +47,8 @@ export function setupRoutes(app: Express): void {
       code: 'NOT_FOUND',
     });
   });
+
+  app.get('/', (_req, res) => {
+    res.redirect('/app1');
+  });
 }
