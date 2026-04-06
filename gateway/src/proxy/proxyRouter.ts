@@ -14,7 +14,7 @@ interface AppConfig {
   description: string;
 }
 
-// App1 foi removido daqui — agora é servido como static no server.ts
+// App1 servido como static — App3 (DDM) servido como static + rotas internas
 export const APP_REGISTRY: AppConfig[] = [
   {
     key: 'app2',

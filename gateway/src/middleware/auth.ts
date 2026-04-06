@@ -157,3 +157,35 @@ export function generateTokens(payload: Omit<JwtPayload, 'iat' | 'exp'>) {
 
   return { accessToken, refreshToken };
 }
+
+// ── DDM Tenant Context (used by App3 routes inside gateway) ───
+declare global {
+  namespace Express {
+    interface Request {
+      tenant?: {
+        tenantId: string;
+        userId: string;
+        role: string;
+        plan: string;
+        email: string;
+      };
+    }
+  }
+}
+
+export function injectDdmTenant(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void {
+  if (req.user) {
+    req.tenant = {
+      tenantId: req.user.tenantId,
+      userId:   req.user.sub,
+      role:     req.user.role,
+      plan:     req.user.plan,
+      email:    req.user.email,
+    };
+  }
+  next();
+}

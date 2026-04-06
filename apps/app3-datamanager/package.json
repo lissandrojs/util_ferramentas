@@ -1,0 +1,38 @@
+{
+  "name": "@saas-platform/app3-datamanager",
+  "version": "1.0.0",
+  "description": "Dynamic Data Manager — schema-less multi-tenant data platform",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc && cd client && npm run build",
+    "start": "node dist/server.js",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-async-errors": "^3.1.1",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^9.0.1",
+    "xlsx": "^0.18.5",
+    "slugify": "^1.6.6",
+    "axios": "^1.6.2",
+    "typescript": "^5.3.3",
+    "ts-node-dev": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/multer": "^1.4.11",
+    "@types/pg": "^8.10.9",
+    "@types/uuid": "^9.0.7",
+    "@types/node": "^20.10.0",
+    "@types/slugify": "^0.9.0"
+  }
+}

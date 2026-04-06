@@ -12,6 +12,16 @@ import { logger } from './utils/logger';
 import { db } from './config/database';
 import { AppError } from './utils/AppError';
 
+// ── DDM (App3) routes ──────────────────────────────────────────
+import { authenticate, injectDdmTenant } from './middleware/auth';
+import { entitiesRouter } from './ddm/routes/entities.routes';
+import { fieldsRouter }   from './ddm/routes/fields.routes';
+import { recordsRouter }  from './ddm/routes/records.routes';
+import { filesRouter, exportRouter, webhooksRouter } from './ddm/routes/extra.routes';
+
+// ── App4 (Video Downloader) routes ─────────────────────────────
+import { videoRouter } from './app4/video.routes';
+
 const app = express();
 const server = createServer(app);
 
@@ -22,34 +32,51 @@ async function bootstrap() {
   setupMiddleware(app);
   setupRoutes(app);
 
-  // ── Serve App1 (dashboard) static files at /app1 ──────
-  // Built files live at apps/app1-dashboard/dist/
-  // __dirname in production = gateway/dist/
-  // so ../../apps/app1-dashboard/dist resolves correctly
+  // ── Serve App1 (dashboard) static files at /app1 ──────────
   const app1Dist = path.join(__dirname, '../../apps/app1-dashboard/dist');
-
   app.use('/app1', express.static(app1Dist));
-
-  // SPA fallback — todas as rotas do React voltam para index.html
   app.get('/app1/*', (_req: Request, res: Response) => {
     res.sendFile(path.join(app1Dist, 'index.html'));
   });
 
-  // ── Serve checkout.html na raiz do gateway ────────────
-  const checkoutFile = path.join(
-    __dirname,
-    '../../apps/app1-dashboard/public/checkout.html'
-  );
+  // ── Serve checkout.html ────────────────────────────────────
+  const checkoutFile = path.join(__dirname, '../../apps/app1-dashboard/public/checkout.html');
   app.get('/checkout.html', (_req: Request, res: Response) => {
     res.sendFile(checkoutFile);
   });
 
-  // ── Redirect raiz para /app1 ──────────────────────────
+  // ── Serve App3 (Data Manager) static files at /app3 ───────
+  const app3Dist = path.join(__dirname, '../../apps/app3-datamanager/client/dist');
+  app.use('/app3', express.static(app3Dist));
+  app.get('/app3/*', (_req: Request, res: Response) => {
+    res.sendFile(path.join(app3Dist, 'index.html'));
+  });
+
+  // ── Serve App4 (Video Downloader) static files at /app4 ───
+  const app4Dist = path.join(__dirname, '../../apps/app4-videodownloader/client/dist');
+  app.use('/app4', express.static(app4Dist));
+  app.get('/app4/*', (_req: Request, res: Response) => {
+    res.sendFile(path.join(app4Dist, 'index.html'));
+  });
+
+  // ── Mount DDM API routes (protected by JWT) ────────────────
+  app.use('/api/ddm',         authenticate, injectDdmTenant, entitiesRouter);
+  app.use('/api/ddm/:entityId/fields',   authenticate, injectDdmTenant, fieldsRouter);
+  app.use('/api/ddm/:entityId/records',  authenticate, injectDdmTenant, recordsRouter);
+  app.use('/api/ddm/:entityId/export',   authenticate, injectDdmTenant, exportRouter);
+  app.use('/api/ddm/:entityId/webhooks', authenticate, injectDdmTenant, webhooksRouter);
+  app.use('/api/ddm-files',  authenticate, injectDdmTenant, filesRouter);
+
+  // ── Mount App4 (Video) API routes ─────────────────────────
+  // Public — no auth required, rate limiting applied by service
+  app.use('/api/video', videoRouter);
+
+  // ── Redirect raiz para /app1 ──────────────────────────────
   app.get('/', (_req: Request, res: Response) => {
     res.redirect('/app1');
   });
 
-  // ── Proxy reverso para App2 (/app2) ───────────────────
+  // ── Proxy reverso para App2 (/app2) ───────────────────────
   setupProxy(app);
 
   app.use(errorHandler);
@@ -57,22 +84,16 @@ async function bootstrap() {
   const PORT = process.env.PORT || 3000;
   server.listen(PORT, () => {
     logger.info(`🚀 Gateway na porta ${PORT} [${process.env.NODE_ENV}]`);
-    logger.info(`📂 Serving App1 static from: ${app1Dist}`);
-    logger.info(`📡 Proxying: /app2 → ${process.env.APP2_URLSHORTENER_URL}`);
+    logger.info(`📂 App1 estático em: ${app1Dist}`);
+    logger.info(`📂 App3 estático em: ${app3Dist}`);
+    logger.info(`📊 DDM API em: /api/ddm`);
   });
 }
 
-function errorHandler(
-  err: Error,
-  req: Request,
-  res: Response,
-  _next: NextFunction
-) {
+function errorHandler(err: Error, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
-      success: false,
-      error: err.message,
-      code: err.code,
+      success: false, error: err.message, code: err.code,
     });
   }
   logger.error(`Unhandled error on ${req.method} ${req.path}: ${err.message}`);
