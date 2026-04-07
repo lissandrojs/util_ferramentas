@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getVideoInfo, downloadVideoStream, formatDuration, formatBytes } from './video.service';
+import { getVideoInfo, downloadVideoStream, formatDuration, formatBytes, getYtDlpBin } from './video.service';
 import { logger } from '../utils/logger';
 
 export const videoRouter = Router();
@@ -10,6 +10,22 @@ const activeDownloads = new Map<string, number>();
 function getUserKey(req: Request): string {
   return req.user?.sub || req.ip || 'anonymous';
 }
+
+// ── GET /api/video/health — check if yt-dlp is available ──
+videoRouter.get('/health', (_req: Request, res: Response) => {
+  try {
+    const bin = getYtDlpBin();
+    const { execSync } = require('child_process');
+    const version = execSync(`${bin} --version`, { stdio: 'pipe' }).toString().trim();
+    return res.json({ available: true, binary: bin, version });
+  } catch (err) {
+    return res.status(503).json({
+      available: false,
+      error: (err as Error).message,
+      hint: 'Install yt-dlp: pip install yt-dlp --break-system-packages',
+    });
+  }
+});
 
 // ── GET /api/video/info?url=... ────────────────────────────
 videoRouter.get('/info', async (req: Request, res: Response) => {

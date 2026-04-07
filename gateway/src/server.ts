@@ -60,11 +60,12 @@ async function bootstrap() {
   });
 
   // ── Mount DDM API routes (protected by JWT) ────────────────
-  app.use('/api/ddm',         authenticate, injectDdmTenant, entitiesRouter);
-  app.use('/api/ddm/:entityId/fields',   authenticate, injectDdmTenant, fieldsRouter);
-  app.use('/api/ddm/:entityId/records',  authenticate, injectDdmTenant, recordsRouter);
-  app.use('/api/ddm/:entityId/export',   authenticate, injectDdmTenant, exportRouter);
-  app.use('/api/ddm/:entityId/webhooks', authenticate, injectDdmTenant, webhooksRouter);
+  // Frontend baseURL = /api/ddm, then calls /entities, /entities/:id/fields etc.
+  app.use('/api/ddm/entities', authenticate, injectDdmTenant, entitiesRouter);
+  app.use('/api/ddm/entities/:entityId/fields',   authenticate, injectDdmTenant, fieldsRouter);
+  app.use('/api/ddm/entities/:entityId/records',  authenticate, injectDdmTenant, recordsRouter);
+  app.use('/api/ddm/entities/:entityId/export',   authenticate, injectDdmTenant, exportRouter);
+  app.use('/api/ddm/entities/:entityId/webhooks', authenticate, injectDdmTenant, webhooksRouter);
   app.use('/api/ddm-files',  authenticate, injectDdmTenant, filesRouter);
 
   // ── Mount App4 (Video) API routes ─────────────────────────

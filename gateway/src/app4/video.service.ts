@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
 
 // ── Detect yt-dlp binary ────────────────────────────────────
-function getYtDlpBin(): string {
+export function getYtDlpBin(): string {
   const candidates = ['yt-dlp', '/usr/local/bin/yt-dlp', '/usr/bin/yt-dlp'];
   for (const bin of candidates) {
     try { execSync(`${bin} --version`, { stdio: 'pipe' }); return bin; } catch { /* try next */ }
