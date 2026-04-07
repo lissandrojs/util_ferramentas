@@ -80,6 +80,11 @@ async function bootstrap() {
   // ── Proxy reverso para App2 (/app2) ───────────────────────
   setupProxy(app);
 
+  // ── 404 para /api/* não encontrado (DEVE ser o último) ────
+  app.use('/api/*', (_req: Request, res: Response) => {
+    res.status(404).json({ success: false, error: 'API endpoint not found', code: 'NOT_FOUND' });
+  });
+
   app.use(errorHandler);
 
   const PORT = process.env.PORT || 3000;

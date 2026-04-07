@@ -38,13 +38,5 @@ export function setupRoutes(app: Express): void {
       })),
     });
   });
-
-  // ── 404 handler for /api/* ──────────────────────────────
-  app.use('/api/*', (_req, res) => {
-    res.status(404).json({
-      success: false,
-      error: 'API endpoint not found',
-      code: 'NOT_FOUND',
-    });
-  });
+  // NOTE: /api/* 404 handler is in server.ts AFTER all routes are mounted
 }
