@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
-import { Download, Link2, Loader2, AlertCircle, CheckCircle2, Film, Music, ChevronDown, X, Clock, User, RefreshCw } from 'lucide-react';
+import { Download, Link2, Loader2, AlertCircle, CheckCircle2, Film, Music, ChevronDown, X, Clock, User, RefreshCw, AlertTriangle } from 'lucide-react';
 
 interface VideoFormat {
   id: string;
@@ -22,40 +22,57 @@ interface VideoInfo {
 }
 
 type AppState = 'idle' | 'loading-info' | 'ready' | 'downloading' | 'done' | 'error';
+type HealthState = 'checking' | 'ok' | 'unavailable';
 
 const SUPPORTED_SITES = [
-  { name: 'YouTube', icon: '▶', color: '#ff0000' },
-  { name: 'Instagram', icon: '📷', color: '#e1306c' },
-  { name: 'TikTok', icon: '♪', color: '#010101' },
-  { name: 'Twitter/X', icon: '𝕏', color: '#1da1f2' },
-  { name: 'Vimeo', icon: '🎬', color: '#1ab7ea' },
-  { name: 'Facebook', icon: 'f', color: '#1877f2' },
-  { name: 'Reddit', icon: 'r/', color: '#ff4500' },
-  { name: 'Twitch', icon: '🟣', color: '#9146ff' },
+  { name: 'YouTube',   icon: '▶' },
+  { name: 'Instagram', icon: '📷' },
+  { name: 'TikTok',    icon: '♪' },
+  { name: 'Twitter/X', icon: '𝕏' },
+  { name: 'Vimeo',     icon: '🎬' },
+  { name: 'Facebook',  icon: 'f' },
+  { name: 'Reddit',    icon: 'r/' },
+  { name: 'Twitch',    icon: '🟣' },
 ];
 
 function App() {
-  const [url, setUrl]                 = useState('');
-  const [state, setState]             = useState<AppState>('idle');
-  const [info, setInfo]               = useState<VideoInfo | null>(null);
+  const [url, setUrl]               = useState('');
+  const [state, setState]           = useState<AppState>('idle');
+  const [info, setInfo]             = useState<VideoInfo | null>(null);
   const [selectedFormat, setSelected] = useState<VideoFormat | null>(null);
-  const [error, setError]             = useState('');
+  const [error, setError]           = useState('');
   const [showFormats, setShowFormats] = useState(false);
-  const [progress, setProgress]       = useState('');
+  const [health, setHealth]         = useState<HealthState>('checking');
+  const [ytdlpVersion, setYtdlpVersion] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Check yt-dlp availability on mount
+  useEffect(() => {
+    fetch('/api/video/health')
+      .then(r => r.json())
+      .then(d => {
+        if (d.available) {
+          setHealth('ok');
+          setYtdlpVersion(d.version || '');
+        } else {
+          setHealth('unavailable');
+        }
+      })
+      .catch(() => setHealth('unavailable'));
+  }, []);
+
   const s: Record<string, React.CSSProperties> = {
-    bg:      { minHeight: '100vh', background: '#0a0a0f', color: '#e8e8f0', fontFamily: 'Inter, system-ui, sans-serif', padding: '0' },
-    header:  { background: '#111118', borderBottom: '1px solid #2a2a38', padding: '1rem 2rem', display: 'flex', alignItems: 'center', gap: '.75rem' },
-    logo:    { width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #6c63ff, #00d4aa)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    main:    { maxWidth: 720, margin: '0 auto', padding: '3rem 1.5rem' },
-    card:    { background: '#111118', border: '1px solid #2a2a38', borderRadius: 16, padding: '2rem' },
-    input:   { flex: 1, background: '#1a1a24', border: '1px solid #2a2a38', borderRadius: 10, color: '#e8e8f0', padding: '.75rem 1rem', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none' },
-    btn:     { display: 'inline-flex', alignItems: 'center', gap: '.5rem', padding: '.75rem 1.5rem', borderRadius: 10, fontWeight: 600, fontSize: '.875rem', cursor: 'pointer', border: 'none', transition: 'all .15s' },
+    bg:   { minHeight: '100vh', background: '#0a0a0f', color: '#e8e8f0', fontFamily: 'Inter, system-ui, sans-serif' },
+    hdr:  { background: '#111118', borderBottom: '1px solid #2a2a38', padding: '1rem 2rem', display: 'flex', alignItems: 'center', gap: '.75rem' },
+    logo: { width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg, #6c63ff, #00d4aa)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    main: { maxWidth: 720, margin: '0 auto', padding: '3rem 1.5rem' },
+    card: { background: '#111118', border: '1px solid #2a2a38', borderRadius: 16, padding: '2rem' },
+    btn:  { display: 'inline-flex', alignItems: 'center', gap: '.5rem', padding: '.75rem 1.5rem', borderRadius: 10, fontWeight: 600, fontSize: '.875rem', cursor: 'pointer', border: 'none', transition: 'opacity .15s' },
+    inp:  { flex: 1, background: '#1a1a24', border: '1px solid #2a2a38', borderRadius: 10, color: '#e8e8f0', padding: '.75rem 1rem', fontSize: '.9rem', fontFamily: 'inherit', outline: 'none', width: '100%', boxSizing: 'border-box' as const },
   };
 
   const fetchInfo = async () => {
-    if (!url.trim()) return;
+    if (!url.trim() || health !== 'ok') return;
     try { new URL(url); } catch { setError('URL inválida. Verifique o link.'); setState('error'); return; }
 
     setState('loading-info');
@@ -67,14 +84,20 @@ function App() {
       const res = await fetch(`/api/video/info?url=${encodeURIComponent(url)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao carregar informações');
-
       setInfo(data.data);
-      // Auto-select best non-audio format
       const best = data.data.formats.find((f: VideoFormat) => !f.is_audio_only) || data.data.formats[0];
       setSelected(best);
       setState('ready');
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      // Translate common yt-dlp auth errors
+      const friendlyMsg = msg.includes('Sign in') || msg.includes('bot') || msg.includes('authenticate')
+        ? 'Este vídeo requer autenticação (login). Tente com um link público ou de outra plataforma.'
+        : msg.includes('Private') ? 'Vídeo privado — não disponível para download.'
+        : msg.includes('not available') ? 'Vídeo não disponível nesta região.'
+        : msg.includes('Unsupported') ? 'Site não suportado. Tente YouTube, Instagram, TikTok...'
+        : msg;
+      setError(friendlyMsg);
       setState('error');
     }
   };
@@ -82,71 +105,59 @@ function App() {
   const startDownload = () => {
     if (!info || !selectedFormat) return;
     setState('downloading');
-    setProgress('Iniciando download...');
-
-    const params = new URLSearchParams({
-      url,
-      format: selectedFormat.id,
-      ext:    selectedFormat.ext,
-    });
-
-    // Trigger browser download via anchor
+    const params = new URLSearchParams({ url, format: selectedFormat.id, ext: selectedFormat.ext });
     const a = document.createElement('a');
     a.href = `/api/video/download?${params}`;
     a.download = '';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-
-    // Show done after a moment
-    setTimeout(() => {
-      setState('done');
-      setProgress('');
-    }, 2000);
+    setTimeout(() => setState('done'), 2000);
   };
 
   const reset = () => {
-    setState('idle');
-    setUrl('');
-    setInfo(null);
-    setSelected(null);
-    setError('');
-    setProgress('');
+    setState('idle'); setUrl(''); setInfo(null); setSelected(null); setError('');
     setTimeout(() => inputRef.current?.focus(), 100);
-  };
-
-  const handlePaste = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text.startsWith('http')) { setUrl(text); }
-    } catch { /* clipboard not available */ }
   };
 
   return (
     <div style={s.bg}>
-      {/* Header */}
-      <header style={s.header}>
-        <div style={s.logo}>
-          <Download size={18} color="#fff" />
-        </div>
+      <header style={s.hdr}>
+        <div style={s.logo}><Download size={18} color="#fff" /></div>
         <div>
           <span style={{ fontWeight: 700, fontSize: '.9rem' }}>Video Downloader</span>
           <span style={{ marginLeft: '.75rem', fontSize: '.72rem', color: '#8888a8', fontFamily: 'monospace' }}>/app4</span>
         </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+          {health === 'checking' && <span style={{ fontSize: '.75rem', color: '#8888a8' }}>Verificando yt-dlp...</span>}
+          {health === 'ok' && <span style={{ fontSize: '.75rem', color: '#00d4aa', display: 'flex', alignItems: 'center', gap: '.3rem' }}><CheckCircle2 size={13} /> yt-dlp {ytdlpVersion}</span>}
+          {health === 'unavailable' && <span style={{ fontSize: '.75rem', color: '#ff4d6a', display: 'flex', alignItems: 'center', gap: '.3rem' }}><AlertCircle size={13} /> yt-dlp não instalado</span>}
+        </div>
       </header>
 
       <main style={s.main}>
-        {/* Hero */}
+        {/* yt-dlp unavailable banner */}
+        {health === 'unavailable' && (
+          <div style={{ padding: '1rem 1.25rem', background: 'rgba(255,77,106,.08)', border: '1px solid rgba(255,77,106,.3)', borderRadius: 12, marginBottom: '1.5rem', display: 'flex', gap: '.75rem' }}>
+            <AlertTriangle size={18} color="#ff4d6a" style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <p style={{ fontWeight: 600, color: '#ff4d6a', marginBottom: '.35rem' }}>yt-dlp não está instalado no servidor</p>
+              <p style={{ fontSize: '.85rem', color: '#ff8a9a', lineHeight: 1.6 }}>
+                Para ativar o download de vídeos, o build command do Render precisa incluir:<br />
+                <code style={{ fontFamily: 'monospace', fontSize: '.78rem', background: 'rgba(255,77,106,.15)', padding: '2px 6px', borderRadius: 4 }}>
+                  pip install yt-dlp --break-system-packages
+                </code>
+              </p>
+            </div>
+          </div>
+        )}
+
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.25rem)', fontWeight: 700, marginBottom: '.75rem', lineHeight: 1.2 }}>
-            Baixe qualquer vídeo
-          </h1>
-          <p style={{ color: '#8888a8', fontSize: '1rem' }}>
-            YouTube, Instagram, TikTok, Twitter e mais de 1000 sites
-          </p>
+          <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.25rem)', fontWeight: 700, marginBottom: '.75rem', lineHeight: 1.2 }}>Baixe qualquer vídeo</h1>
+          <p style={{ color: '#8888a8' }}>YouTube, Instagram, TikTok, Twitter e mais de 1000 sites</p>
         </div>
 
-        {/* Input card */}
+        {/* Input */}
         <div style={s.card}>
           <div style={{ display: 'flex', gap: '.75rem', marginBottom: '1rem' }}>
             <div style={{ position: 'relative', flex: 1 }}>
@@ -155,9 +166,9 @@ function App() {
                 value={url}
                 onChange={e => setUrl(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && fetchInfo()}
-                style={{ ...s.input, paddingLeft: '2.5rem', width: '100%', boxSizing: 'border-box' }}
+                style={{ ...s.inp, paddingLeft: '2.5rem' }}
                 placeholder="Cole o link do vídeo aqui..."
-                disabled={state === 'loading-info' || state === 'downloading'}
+                disabled={state === 'loading-info' || health !== 'ok'}
                 autoFocus
               />
               <Link2 size={14} style={{ position: 'absolute', left: '.875rem', top: '50%', transform: 'translateY(-50%)', color: '#8888a8' }} />
@@ -169,82 +180,57 @@ function App() {
             )}
             <button
               onClick={fetchInfo}
-              disabled={!url.trim() || state === 'loading-info' || state === 'downloading'}
-              style={{ ...s.btn, background: '#6c63ff', color: '#fff', opacity: (!url.trim() || state === 'loading-info') ? .6 : 1, whiteSpace: 'nowrap' }}
+              disabled={!url.trim() || state === 'loading-info' || health !== 'ok'}
+              style={{ ...s.btn, background: '#6c63ff', color: '#fff', opacity: (!url.trim() || state === 'loading-info' || health !== 'ok') ? .5 : 1, whiteSpace: 'nowrap' }}
             >
-              {state === 'loading-info' ? <><Loader2 size={15} style={{ animation: 'spin .7s linear infinite' }} /> Buscando...</> : 'Buscar vídeo'}
+              {state === 'loading-info'
+                ? <><Loader2 size={15} style={{ animation: 'spin .7s linear infinite' }} /> Buscando...</>
+                : 'Buscar vídeo'}
             </button>
           </div>
-
           <button
-            onClick={handlePaste}
+            onClick={async () => { try { const t = await navigator.clipboard.readText(); if (t.startsWith('http')) setUrl(t); } catch {} }}
             style={{ background: 'none', border: 'none', color: '#6c63ff', fontSize: '.8rem', cursor: 'pointer', padding: 0 }}
           >
-            📋 Colar link da área de transferência
+            📋 Colar da área de transferência
           </button>
         </div>
 
         {/* Error */}
         {state === 'error' && (
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '.75rem', padding: '1rem 1.25rem', background: 'rgba(255,77,106,.08)', border: '1px solid rgba(255,77,106,.3)', borderRadius: 12, marginTop: '1.25rem' }}>
+          <div style={{ display: 'flex', gap: '.75rem', padding: '1rem 1.25rem', background: 'rgba(255,77,106,.08)', border: '1px solid rgba(255,77,106,.3)', borderRadius: 12, marginTop: '1.25rem' }}>
             <AlertCircle size={18} color="#ff4d6a" style={{ flexShrink: 0, marginTop: 1 }} />
             <div>
-              <p style={{ color: '#ff4d6a', fontWeight: 500, marginBottom: '.25rem' }}>Não foi possível carregar o vídeo</p>
+              <p style={{ color: '#ff4d6a', fontWeight: 500, marginBottom: '.25rem' }}>Não foi possível baixar o vídeo</p>
               <p style={{ color: '#ff8a9a', fontSize: '.875rem' }}>{error}</p>
-              <button onClick={reset} style={{ marginTop: '.625rem', background: 'none', border: 'none', color: '#6c63ff', cursor: 'pointer', fontSize: '.8rem', padding: 0 }}>
-                ↺ Tentar outro link
-              </button>
+              <button onClick={reset} style={{ marginTop: '.625rem', background: 'none', border: 'none', color: '#6c63ff', cursor: 'pointer', fontSize: '.8rem', padding: 0 }}>↺ Tentar outro link</button>
             </div>
           </div>
         )}
 
-        {/* Video info card */}
+        {/* Video info */}
         {(state === 'ready' || state === 'downloading' || state === 'done') && info && (
           <div style={{ ...s.card, marginTop: '1.25rem' }}>
             <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-              {/* Thumbnail */}
               {info.thumbnail && (
-                <div style={{ flexShrink: 0 }}>
-                  <img
-                    src={info.thumbnail}
-                    alt={info.title}
-                    style={{ width: 160, height: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid #2a2a38', display: 'block' }}
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                </div>
+                <img src={info.thumbnail} alt={info.title} style={{ width: 160, height: 90, objectFit: 'cover', borderRadius: 8, border: '1px solid #2a2a38', flexShrink: 0 }}
+                  onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               )}
-
-              {/* Meta */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '.5rem', lineHeight: 1.4 }}>
-                  {info.title}
-                </p>
+                <p style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '.5rem', lineHeight: 1.4 }}>{info.title}</p>
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '.375rem', fontSize: '.8rem', color: '#8888a8' }}>
-                    <User size={12} /> {info.uploader}
-                  </span>
-                  {info.duration_fmt && (
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '.375rem', fontSize: '.8rem', color: '#8888a8' }}>
-                      <Clock size={12} /> {info.duration_fmt}
-                    </span>
-                  )}
-                  <span style={{ fontSize: '.8rem', color: '#8888a8', background: '#1a1a24', padding: '.15rem .5rem', borderRadius: 6, border: '1px solid #2a2a38' }}>
-                    {info.extractor}
-                  </span>
+                  <span style={{ fontSize: '.8rem', color: '#8888a8', display: 'flex', alignItems: 'center', gap: '.375rem' }}><User size={12} />{info.uploader}</span>
+                  {info.duration_fmt && <span style={{ fontSize: '.8rem', color: '#8888a8', display: 'flex', alignItems: 'center', gap: '.375rem' }}><Clock size={12} />{info.duration_fmt}</span>}
+                  <span style={{ fontSize: '.75rem', color: '#8888a8', background: '#1a1a24', padding: '.15rem .5rem', borderRadius: 6, border: '1px solid #2a2a38' }}>{info.extractor}</span>
                 </div>
               </div>
             </div>
 
             {/* Format selector */}
             <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '.8rem', color: '#8888a8', marginBottom: '.5rem', fontWeight: 500 }}>
-                Formato e qualidade
-              </label>
+              <label style={{ display: 'block', fontSize: '.8rem', color: '#8888a8', marginBottom: '.5rem', fontWeight: 500 }}>Formato e qualidade</label>
               <div style={{ position: 'relative' }}>
-                <button
-                  onClick={() => setShowFormats(!showFormats)}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '.75rem 1rem', background: '#1a1a24', border: '1px solid #3a3a4e', borderRadius: 10, color: '#e8e8f0', cursor: 'pointer', fontSize: '.875rem' }}
-                >
+                <button onClick={() => setShowFormats(!showFormats)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '.75rem 1rem', background: '#1a1a24', border: '1px solid #3a3a4e', borderRadius: 10, color: '#e8e8f0', cursor: 'pointer', fontSize: '.875rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '.625rem' }}>
                     {selectedFormat?.is_audio_only ? <Music size={14} color="#6c63ff" /> : <Film size={14} color="#6c63ff" />}
                     <span>{selectedFormat?.label || 'Selecione um formato'}</span>
@@ -254,30 +240,21 @@ function App() {
 
                 {showFormats && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: '#1a1a24', border: '1px solid #3a3a4e', borderRadius: 10, marginTop: 4, overflow: 'hidden', maxHeight: 280, overflowY: 'auto' }}>
-                    {/* Video formats */}
                     {info.formats.filter(f => !f.is_audio_only).length > 0 && (
-                      <div style={{ padding: '.5rem .75rem', fontSize: '.7rem', color: '#8888a8', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #2a2a38' }}>
-                        Vídeo
-                      </div>
+                      <div style={{ padding: '.4rem .75rem', fontSize: '.7rem', color: '#8888a8', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #2a2a38' }}>Vídeo</div>
                     )}
                     {info.formats.filter(f => !f.is_audio_only).map(f => (
                       <button key={f.id} onClick={() => { setSelected(f); setShowFormats(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '.75rem', padding: '.75rem 1rem', background: selectedFormat?.id === f.id ? 'rgba(108,99,255,.1)' : 'transparent', border: 'none', color: selectedFormat?.id === f.id ? '#6c63ff' : '#e8e8f0', cursor: 'pointer', fontSize: '.875rem', textAlign: 'left' }}>
-                        <Film size={13} />
-                        <span style={{ flex: 1 }}>{f.label}</span>
+                        <Film size={13} /><span style={{ flex: 1 }}>{f.label}</span>
                         {selectedFormat?.id === f.id && <CheckCircle2 size={13} />}
                       </button>
                     ))}
-
-                    {/* Audio formats */}
                     {info.formats.filter(f => f.is_audio_only).length > 0 && (
-                      <div style={{ padding: '.5rem .75rem', fontSize: '.7rem', color: '#8888a8', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #2a2a38', borderTop: '1px solid #2a2a38' }}>
-                        Apenas áudio
-                      </div>
+                      <div style={{ padding: '.4rem .75rem', fontSize: '.7rem', color: '#8888a8', textTransform: 'uppercase', letterSpacing: '.05em', borderBottom: '1px solid #2a2a38', borderTop: '1px solid #2a2a38' }}>Apenas áudio</div>
                     )}
                     {info.formats.filter(f => f.is_audio_only).map(f => (
                       <button key={f.id} onClick={() => { setSelected(f); setShowFormats(false); }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '.75rem', padding: '.75rem 1rem', background: selectedFormat?.id === f.id ? 'rgba(108,99,255,.1)' : 'transparent', border: 'none', color: selectedFormat?.id === f.id ? '#6c63ff' : '#8888a8', cursor: 'pointer', fontSize: '.875rem', textAlign: 'left' }}>
-                        <Music size={13} />
-                        <span style={{ flex: 1 }}>{f.label}</span>
+                        <Music size={13} /><span style={{ flex: 1 }}>{f.label}</span>
                         {selectedFormat?.id === f.id && <CheckCircle2 size={13} />}
                       </button>
                     ))}
@@ -292,7 +269,7 @@ function App() {
                 <>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '.625rem', padding: '.875rem 1rem', background: 'rgba(0,212,170,.08)', border: '1px solid rgba(0,212,170,.3)', borderRadius: 10 }}>
                     <CheckCircle2 size={18} color="#00d4aa" />
-                    <span style={{ color: '#00d4aa', fontWeight: 500, fontSize: '.9rem' }}>Download iniciado!</span>
+                    <span style={{ color: '#00d4aa', fontWeight: 500 }}>Download iniciado com sucesso!</span>
                   </div>
                   <button onClick={reset} style={{ ...s.btn, background: 'transparent', border: '1px solid #2a2a38', color: '#8888a8' }}>
                     <RefreshCw size={14} /> Novo download
@@ -300,45 +277,29 @@ function App() {
                 </>
               ) : (
                 <>
-                  <button
-                    onClick={startDownload}
-                    disabled={!selectedFormat || state === 'downloading'}
-                    style={{ ...s.btn, flex: 1, background: '#6c63ff', color: '#fff', justifyContent: 'center', opacity: (!selectedFormat || state === 'downloading') ? .6 : 1 }}
-                  >
+                  <button onClick={startDownload} disabled={!selectedFormat || state === 'downloading'} style={{ ...s.btn, flex: 1, background: '#6c63ff', color: '#fff', justifyContent: 'center', opacity: (!selectedFormat || state === 'downloading') ? .6 : 1 }}>
                     {state === 'downloading'
                       ? <><Loader2 size={15} style={{ animation: 'spin .7s linear infinite' }} /> Baixando...</>
-                      : <><Download size={15} /> Baixar {selectedFormat?.is_audio_only ? 'áudio' : 'vídeo'}</>
-                    }
+                      : <><Download size={15} /> Baixar {selectedFormat?.is_audio_only ? 'áudio' : 'vídeo'}</>}
                   </button>
-                  <button onClick={reset} style={{ ...s.btn, background: 'transparent', border: '1px solid #2a2a38', color: '#8888a8' }}>
-                    Cancelar
-                  </button>
+                  <button onClick={reset} style={{ ...s.btn, background: 'transparent', border: '1px solid #2a2a38', color: '#8888a8' }}>Cancelar</button>
                 </>
               )}
             </div>
-
-            {progress && (
-              <p style={{ fontSize: '.8rem', color: '#8888a8', marginTop: '.75rem', textAlign: 'center' }}>{progress}</p>
-            )}
           </div>
         )}
 
         {/* Supported sites */}
-        {state === 'idle' && (
+        {state === 'idle' && health === 'ok' && (
           <div style={{ marginTop: '2.5rem', textAlign: 'center' }}>
-            <p style={{ fontSize: '.8rem', color: '#8888a8', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>
-              Sites suportados
-            </p>
+            <p style={{ fontSize: '.8rem', color: '#8888a8', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Sites suportados</p>
             <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '.625rem' }}>
               {SUPPORTED_SITES.map(site => (
                 <div key={site.name} style={{ padding: '.375rem .875rem', background: '#111118', border: '1px solid #2a2a38', borderRadius: 20, fontSize: '.8rem', color: '#8888a8', display: 'flex', alignItems: 'center', gap: '.375rem' }}>
-                  <span style={{ fontSize: '1rem' }}>{site.icon}</span>
-                  {site.name}
+                  <span>{site.icon}</span>{site.name}
                 </div>
               ))}
-              <div style={{ padding: '.375rem .875rem', background: '#111118', border: '1px solid #2a2a38', borderRadius: 20, fontSize: '.8rem', color: '#6c63ff' }}>
-                +1000 mais
-              </div>
+              <div style={{ padding: '.375rem .875rem', background: '#111118', border: '1px solid #2a2a38', borderRadius: 20, fontSize: '.8rem', color: '#6c63ff' }}>+1000 mais</div>
             </div>
           </div>
         )}
@@ -346,7 +307,6 @@ function App() {
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
-        input { transition: border-color .15s, box-shadow .15s; }
         input:focus { border-color: #6c63ff !important; box-shadow: 0 0 0 3px rgba(108,99,255,.2); }
         button:hover:not(:disabled) { opacity: .88; }
         * { box-sizing: border-box; margin: 0; padding: 0; }

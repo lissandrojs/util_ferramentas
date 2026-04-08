@@ -22,26 +22,26 @@ declare global {
   }
 }
 
-// ── Verify JWT token from Authorization header ──────────
+// ── Verify JWT token from Authorization header OR ?token= query ──
 export function authenticate(
   req: Request,
   _res: Response,
   next: NextFunction
 ): void {
+  // Accept token from header OR query string (needed for file/export downloads)
   const authHeader = req.headers.authorization;
+  const queryToken = req.query.token as string | undefined;
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    throw new AppError('Missing or malformed Authorization header', 401, 'UNAUTHORIZED');
+  const token = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : queryToken;
+
+  if (!token) {
+    throw new AppError('Missing Authorization token', 401, 'UNAUTHORIZED');
   }
 
-  const token = authHeader.slice(7);
-
   try {
-    const payload = jwt.verify(
-      token,
-      process.env.JWT_SECRET!
-    ) as JwtPayload;
-
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as JwtPayload;
     req.user = payload;
     next();
   } catch (err) {

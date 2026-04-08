@@ -6,6 +6,33 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// ── Attach JWT token from App1's auth store ───────────────────
+// App1 persists auth in localStorage under 'auth-store'
+api.interceptors.request.use((config) => {
+  try {
+    const raw = localStorage.getItem('auth-store');
+    if (raw) {
+      const store = JSON.parse(raw);
+      const token = store?.state?.token || store?.token;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+  } catch { /* no token available */ }
+  return config;
+});
+
+// ── Redirect to login on 401 ──────────────────────────────────
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      window.location.href = '/app1/login';
+    }
+    return Promise.reject(err);
+  }
+);
+
 // ── Entities ───────────────────────────────────────────────────
 export const entitiesApi = {
   list: () => api.get<{ data: EntityType[] }>('/entities').then(r => r.data.data),
@@ -68,9 +95,18 @@ export const recordsApi = {
 // ── Export ─────────────────────────────────────────────────────
 export const exportApi = {
   download: (entityId: string, format: 'xlsx' | 'csv', fields?: string[], search?: string) => {
-    const params = new URLSearchParams({ format });
-    if (fields?.length) params.set('fields', fields.join(','));
-    if (search) params.set('search', search);
-    window.open(`/api/entities/${entityId}/export?${params}`, '_blank');
+    try {
+      const raw = localStorage.getItem('auth-store');
+      const store = raw ? JSON.parse(raw) : null;
+      const token = store?.state?.token || store?.token || '';
+      const params = new URLSearchParams({ format });
+      if (fields?.length) params.set('fields', fields.join(','));
+      if (search) params.set('search', search);
+      if (token) params.set('token', token);
+      // Use /api/ddm/entities path (correct gateway mount)
+      window.open(`/api/ddm/entities/${entityId}/export?${params}`, '_blank');
+    } catch {
+      window.open(`/api/ddm/entities/${entityId}/export?format=${format}`, '_blank');
+    }
   },
 };
