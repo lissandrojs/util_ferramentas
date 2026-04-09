@@ -91,11 +91,12 @@ function App() {
     } catch (e) {
       const msg = (e as Error).message;
       // Translate common yt-dlp auth errors
-      const friendlyMsg = msg.includes('Sign in') || msg.includes('bot') || msg.includes('authenticate')
-        ? 'Este vídeo requer autenticação (login). Tente com um link público ou de outra plataforma.'
+      const friendlyMsg = msg.includes('Sign in') || msg.includes('bot') || msg.includes('authenticate') || msg.includes('confirm your age')
+        ? 'O YouTube está bloqueando o IP do servidor. Tente um vídeo de outra plataforma (Instagram, TikTok, Vimeo). Para YouTube, use um link público sem restrição de idade.'
         : msg.includes('Private') ? 'Vídeo privado — não disponível para download.'
         : msg.includes('not available') ? 'Vídeo não disponível nesta região.'
         : msg.includes('Unsupported') ? 'Site não suportado. Tente YouTube, Instagram, TikTok...'
+        : msg.includes('HTTP Error 403') ? 'Acesso negado pelo servidor do vídeo. Tente outro link.'
         : msg;
       setError(friendlyMsg);
       setState('error');
@@ -293,7 +294,7 @@ function App() {
         {state === 'idle' && health === 'ok' && (
           <div style={{ marginTop: '2.5rem', textAlign: 'center' }}>
             <p style={{ fontSize: '.8rem', color: '#8888a8', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '.05em' }}>Sites suportados</p>
-            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '.625rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '.625rem', marginBottom: '1rem' }}>
               {SUPPORTED_SITES.map(site => (
                 <div key={site.name} style={{ padding: '.375rem .875rem', background: '#111118', border: '1px solid #2a2a38', borderRadius: 20, fontSize: '.8rem', color: '#8888a8', display: 'flex', alignItems: 'center', gap: '.375rem' }}>
                   <span>{site.icon}</span>{site.name}
@@ -301,6 +302,9 @@ function App() {
               ))}
               <div style={{ padding: '.375rem .875rem', background: '#111118', border: '1px solid #2a2a38', borderRadius: 20, fontSize: '.8rem', color: '#6c63ff' }}>+1000 mais</div>
             </div>
+            <p style={{ fontSize: '.75rem', color: '#555568', maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
+              ⚠️ O YouTube pode bloquear downloads em servidores cloud. Instagram, TikTok, Vimeo e Twitter funcionam bem.
+            </p>
           </div>
         )}
       </main>

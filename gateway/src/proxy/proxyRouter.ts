@@ -20,8 +20,7 @@ export const APP_REGISTRY: AppConfig[] = [
     key: 'app2',
     pathPrefix: '/app2',
     target: process.env.APP2_URLSHORTENER_URL || 'http://localhost:4001',
-    protected: true,
-    requiredPlan: ['free', 'pro'],
+    protected: false,  // App2 handles its own auth internally
     description: 'URL Shortener',
   },
   {

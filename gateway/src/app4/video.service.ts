@@ -41,10 +41,13 @@ export async function getVideoInfo(url: string): Promise<VideoInfo> {
   const bin = getYtDlpBin();
 
   return new Promise((resolve, reject) => {
+    // Use iOS client for YouTube to bypass bot detection on cloud IPs
+    const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
     const args = [
       '--dump-json',
       '--no-warnings',
       '--no-playlist',
+      ...(isYoutube ? ['--extractor-args', 'youtube:player_client=ios,web'] : []),
       url,
     ];
 
@@ -138,11 +141,14 @@ export function downloadVideoStream(params: {
     ? 'bestvideo+bestaudio/best'
     : `${formatId}+bestaudio/${formatId}/best`;
 
+  const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
+
   const args = [
     '--format', formatSelector,
     '--merge-output-format', outputExt || 'mp4',
     '--no-warnings',
     '--no-playlist',
+    ...(isYoutube ? ['--extractor-args', 'youtube:player_client=ios,web'] : []),
     '--output', '-',   // pipe to stdout
     url,
   ];
