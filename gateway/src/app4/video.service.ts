@@ -1,7 +1,6 @@
-import { spawn, execSync } from 'child_process';
-import { createWriteStream, mkdirSync, existsSync, unlinkSync, readdirSync, statSync } from 'fs';
+import { spawn } from 'child_process';
+import { execSync } from 'child_process';
 import path from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { logger } from '../utils/logger';
 
 // ── Detect yt-dlp binary ────────────────────────────────────
@@ -28,6 +27,7 @@ export interface VideoInfo {
   title: string;
   thumbnail: string;
   duration: number;
+  duration_fmt: string;
   uploader: string;
   webpage_url: string;
   extractor: string;
@@ -36,89 +36,105 @@ export interface VideoInfo {
   best_format_id: string;
 }
 
-// ── Get video metadata without downloading ─────────────────
+// ── Run yt-dlp and return stdout ───────────────────────────
+function runYtDlp(bin: string, args: string[], timeoutMs: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let output = '';
+    let errorOutput = '';
+    const proc = spawn(bin, args, { timeout: timeoutMs });
+    proc.stdout.on('data', (chunk) => { output += chunk.toString(); });
+    proc.stderr.on('data', (chunk) => { errorOutput += chunk.toString(); });
+    proc.on('close', (code) => {
+      if (code !== 0) return reject(new Error(errorOutput || `exit code ${code}`));
+      resolve(output);
+    });
+    proc.on('error', (err) => reject(new Error('Failed to run yt-dlp: ' + err.message)));
+  });
+}
+
+// ── Translate yt-dlp errors to Portuguese ─────────────────
+function translateError(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes('sign in') || m.includes('bot') || m.includes('cookie') || m.includes('authenticate'))
+    return 'O YouTube bloqueou este servidor. Configure YOUTUBE_COOKIES_FILE nas variáveis de ambiente, ou use Instagram, TikTok, Vimeo.';
+  if (m.includes('private'))      return 'Vídeo privado — não disponível.';
+  if (m.includes('not available')) return 'Vídeo não disponível nesta região.';
+  if (m.includes('unsupported'))   return 'URL não suportada. Verifique o link.';
+  if (m.includes('403'))           return 'Acesso negado pelo servidor. Tente outro link.';
+  if (m.includes('age'))           return 'Vídeo com restrição de idade — requer login.';
+  return msg.slice(0, 200);
+}
+
+// ── Get video metadata ─────────────────────────────────────
 export async function getVideoInfo(url: string): Promise<VideoInfo> {
   const bin = getYtDlpBin();
+  const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
 
-  return new Promise((resolve, reject) => {
-    // Use iOS client for YouTube to bypass bot detection on cloud IPs
-    const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
+  // For YouTube: try multiple player clients in sequence
+  const strategies = isYoutube
+    ? ['tv_embedded', 'ios', 'mweb', 'web']
+    : [null];
+
+  let lastError = '';
+
+  for (const client of strategies) {
     const args = [
       '--dump-json',
       '--no-warnings',
       '--no-playlist',
-      ...(isYoutube ? ['--extractor-args', 'youtube:player_client=ios,web'] : []),
+      '--no-check-certificates',
+      ...(client ? ['--extractor-args', `youtube:player_client=${client}`] : []),
+      ...(process.env.YOUTUBE_COOKIES_FILE ? ['--cookies', process.env.YOUTUBE_COOKIES_FILE] : []),
       url,
     ];
 
-    let output = '';
-    let errorOutput = '';
+    try {
+      const output = await runYtDlp(bin, args, 30000);
+      const data = JSON.parse(output);
 
-    const proc = spawn(bin, args, { timeout: 30000 });
+      const rawFormats: VideoFormat[] = (data.formats || [])
+        .filter((f: VideoFormat) => f.vcodec !== 'none' || f.acodec !== 'none')
+        .map((f: VideoFormat) => ({
+          format_id:   f.format_id,
+          ext:         f.ext,
+          resolution:  f.resolution || (f.vcodec === 'none' ? 'audio only' : 'unknown'),
+          filesize:    f.filesize,
+          vcodec:      f.vcodec,
+          acodec:      f.acodec,
+          format_note: f.format_note || '',
+          quality:     f.quality || 0,
+        }));
 
-    proc.stdout.on('data', (chunk) => { output += chunk.toString(); });
-    proc.stderr.on('data', (chunk) => { errorOutput += chunk.toString(); });
-
-    proc.on('close', (code) => {
-      if (code !== 0) {
-        return reject(new Error(
-          errorOutput.includes('Unsupported URL') ? 'URL não suportada. Verifique o link.' :
-          errorOutput.includes('Private video')   ? 'Vídeo privado.' :
-          errorOutput.includes('not available')   ? 'Vídeo não disponível nesta região.' :
-          `Erro ao obter informações: ${errorOutput.slice(0, 200)}`
-        ));
-      }
-
-      try {
-        const data = JSON.parse(output);
-
-        // Filter to useful formats (video+audio or audio only)
-        const rawFormats: VideoFormat[] = (data.formats || [])
-          .filter((f: VideoFormat) =>
-            f.vcodec !== 'none' || f.acodec !== 'none'
-          )
-          .map((f: VideoFormat) => ({
-            format_id:   f.format_id,
-            ext:         f.ext,
-            resolution:  f.resolution || (f.vcodec === 'none' ? 'audio only' : 'unknown'),
-            filesize:    f.filesize,
-            vcodec:      f.vcodec,
-            acodec:      f.acodec,
-            format_note: f.format_note || '',
-            quality:     f.quality || 0,
-          }));
-
-        // Deduplicate by resolution, keeping best quality per resolution
-        const seen = new Map<string, VideoFormat>();
-        for (const f of rawFormats) {
-          const key = f.resolution;
-          if (!seen.has(key) || f.quality > (seen.get(key)?.quality || 0)) {
-            seen.set(key, f);
-          }
+      const seen = new Map<string, VideoFormat>();
+      for (const f of rawFormats) {
+        if (!seen.has(f.resolution) || f.quality > (seen.get(f.resolution)?.quality || 0)) {
+          seen.set(f.resolution, f);
         }
-
-        const formats = Array.from(seen.values())
-          .sort((a, b) => b.quality - a.quality)
-          .slice(0, 10); // max 10 options
-
-        resolve({
-          title:         data.title || 'Vídeo sem título',
-          thumbnail:     data.thumbnail || '',
-          duration:      data.duration || 0,
-          uploader:      data.uploader || data.channel || 'Desconhecido',
-          webpage_url:   data.webpage_url || url,
-          extractor:     data.extractor_key || data.extractor || 'unknown',
-          description:   data.description?.slice(0, 300),
-          formats,
-          best_format_id: data.format_id || 'bestvideo+bestaudio/best',
-        });
-      } catch (e) {
-        reject(new Error('Resposta inválida do yt-dlp'));
       }
-    });
 
-    proc.on('error', (err) => reject(new Error(`Falha ao executar yt-dlp: ${err.message}`)));
-  });
+      const formats = Array.from(seen.values())
+        .sort((a, b) => b.quality - a.quality)
+        .slice(0, 10);
+
+      return {
+        title:          data.title || 'Vídeo sem título',
+        thumbnail:      data.thumbnail || '',
+        duration:       data.duration || 0,
+        duration_fmt:   formatDuration(data.duration || 0),
+        uploader:       data.uploader || data.channel || 'Desconhecido',
+        webpage_url:    data.webpage_url || url,
+        extractor:      data.extractor_key || data.extractor || 'unknown',
+        description:    data.description?.slice(0, 300),
+        formats,
+        best_format_id: data.format_id || 'bestvideo+bestaudio/best',
+      };
+    } catch (err) {
+      lastError = (err as Error).message;
+      logger.warn(`yt-dlp client=${client || 'default'} failed for ${url}: ${lastError.slice(0, 80)}`);
+    }
+  }
+
+  throw new Error(translateError(lastError));
 }
 
 // ── Download video and stream to response ──────────────────
@@ -133,54 +149,48 @@ export function downloadVideoStream(params: {
 }): () => void {
   const { url, formatId, outputExt, onData, onEnd, onError, onFilename } = params;
   const bin = getYtDlpBin();
+  const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
 
-  // Format selector:
-  // - If user picks a specific format, use it merged with best audio
-  // - "best" = single file with video+audio merged
   const formatSelector = formatId === 'best'
     ? 'bestvideo+bestaudio/best'
     : `${formatId}+bestaudio/${formatId}/best`;
-
-  const isYoutube = url.includes('youtube.com') || url.includes('youtu.be');
 
   const args = [
     '--format', formatSelector,
     '--merge-output-format', outputExt || 'mp4',
     '--no-warnings',
     '--no-playlist',
-    ...(isYoutube ? ['--extractor-args', 'youtube:player_client=ios,web'] : []),
-    '--output', '-',   // pipe to stdout
+    '--no-check-certificates',
+    ...(isYoutube ? ['--extractor-args', 'youtube:player_client=tv_embedded'] : []),
+    ...(process.env.YOUTUBE_COOKIES_FILE ? ['--cookies', process.env.YOUTUBE_COOKIES_FILE] : []),
+    '--output', '-',
     url,
   ];
 
-  logger.info(`yt-dlp download: ${url} [format=${formatId}]`);
+  logger.info('yt-dlp download: ' + url + ' [format=' + formatId + ']');
+  onFilename('video.' + (outputExt || 'mp4'));
 
-  // Emit a reasonable filename
-  onFilename(`video.${outputExt || 'mp4'}`);
-
-  const proc = spawn(bin, args, { timeout: 300000 }); // 5 min timeout
+  const proc = spawn(bin, args, { timeout: 300000 });
 
   proc.stdout.on('data', onData);
   proc.stdout.on('end', onEnd);
   proc.stderr.on('data', (chunk) => {
     const msg = chunk.toString();
-    // Extract filename from yt-dlp output
     const match = msg.match(/\[download\] Destination: (.+)/);
     if (match) onFilename(path.basename(match[1]));
   });
 
-  proc.on('error', (err) => onError(new Error(`yt-dlp error: ${err.message}`)));
+  proc.on('error', (err) => onError(new Error('yt-dlp error: ' + err.message)));
   proc.on('close', (code) => {
     if (code !== 0 && code !== null) {
-      onError(new Error(`yt-dlp exited with code ${code}`));
+      onError(new Error('yt-dlp exited with code ' + code));
     }
   });
 
-  // Return cancel function
   return () => { proc.kill('SIGTERM'); };
 }
 
-// ── Format duration to mm:ss or hh:mm:ss ──────────────────
+// ── Format duration ────────────────────────────────────────
 export function formatDuration(seconds: number): string {
   if (!seconds) return 'desconhecido';
   const h = Math.floor(seconds / 3600);
@@ -190,7 +200,7 @@ export function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-// ── Format bytes to human readable ────────────────────────
+// ── Format bytes ───────────────────────────────────────────
 export function formatBytes(bytes?: number): string {
   if (!bytes) return 'tamanho desconhecido';
   const units = ['B', 'KB', 'MB', 'GB'];
