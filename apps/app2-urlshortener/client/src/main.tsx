@@ -5,7 +5,20 @@ import axios from 'axios';
 import { Link2, Copy, Trash2, BarChart2, QrCode, ExternalLink, Plus, X, CheckCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
-const api = axios.create({ baseURL: '/api' });
+const api = axios.create({ baseURL: '/api/app2' });
+
+// Attach JWT from App1's auth store (same pattern as App3)
+api.interceptors.request.use((config) => {
+  try {
+    const raw = localStorage.getItem('saas-auth');
+    if (raw) {
+      const store = JSON.parse(raw);
+      const token = store?.state?.accessToken || store?.accessToken;
+      if (token) config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch { /* no token */ }
+  return config;
+});
 
 interface ShortLink {
   id: string;

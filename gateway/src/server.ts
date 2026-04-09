@@ -22,12 +22,18 @@ import { filesRouter, exportRouter, webhooksRouter } from './ddm/routes/extra.ro
 // ── App4 (Video Downloader) routes ─────────────────────────────
 import { videoRouter } from './app4/video.routes';
 
+// ── App2 (URL Shortener) routes ────────────────────────────────
+import { urlShortenerRouter, redirectRouter, migrateUrlShortener } from './app2/urlshortener.routes';
+
 const app = express();
 const server = createServer(app);
 
 async function bootstrap() {
   await db.connect();
   logger.info('✅ Database connected');
+
+  // Run App2 migrations
+  await migrateUrlShortener();
 
   setupMiddleware(app);
   setupRoutes(app);
@@ -58,6 +64,19 @@ async function bootstrap() {
   app.get('/app4/*', (_req: Request, res: Response) => {
     res.sendFile(path.join(app4Dist, 'index.html'));
   });
+
+  // ── Serve App2 (URL Shortener) static files at /app2 ──────
+  const app2Dist = path.join(__dirname, '../../apps/app2-urlshortener/client/dist');
+  app.use('/app2', express.static(app2Dist));
+  app.get('/app2/*', (_req: Request, res: Response) => {
+    res.sendFile(path.join(app2Dist, 'index.html'));
+  });
+
+  // ── Public short link redirects /r/:slug ───────────────────
+  app.use(redirectRouter);
+
+  // ── Mount App2 (URL Shortener) API routes ─────────────────
+  app.use('/api/app2', authenticate, urlShortenerRouter);
 
   // ── Mount DDM API routes (protected by JWT) ────────────────
   // Frontend baseURL = /api/ddm, then calls /entities, /entities/:id/fields etc.
