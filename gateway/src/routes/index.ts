@@ -7,8 +7,12 @@ import {
   licensePublicRouter,
   licenseWebhookRouter,
 } from './licenses.routes';
+import { seoRouter } from './seo.routes';
 
 export function setupRoutes(app: Express): void {
+  // ── SEO — landing page, sitemap, robots.txt ────────────────
+  app.use(seoRouter);
+
   // ── Stripe webhook ─────────────────────────────────────────
   app.use(webhookRouter);
 

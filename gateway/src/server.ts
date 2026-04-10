@@ -91,11 +91,6 @@ async function bootstrap() {
   // Public — no auth required, rate limiting applied by service
   app.use('/api/video', videoRouter);
 
-  // ── Redirect raiz para /app1 ──────────────────────────────
-  app.get('/', (_req: Request, res: Response) => {
-    res.redirect('/app1');
-  });
-
   // ── Proxy reverso para App2 (/app2) ───────────────────────
   setupProxy(app);
 
