@@ -6,9 +6,16 @@ import { api } from '../services/api';
 type Status = 'pending_payment'|'payment_sent'|'approved'|'rejected';
 
 interface PurchaseRequest {
-  id: string; name: string; email: string; plan: string;
-  amount_cents: number; status: Status; pix_txid: string;
-  admin_notes: string; approved_by: string; approved_at: string;
+  id: string;
+  name: string;
+  email: string;
+  plan: string;
+  amount_cents: number;
+  status: Status;
+  pix_txid: string;
+  admin_notes: string;
+  approved_by: string;
+  approved_at: string;
   created_at: string;
 }
 
@@ -21,6 +28,7 @@ const STATUS_COLORS: Record<Status, { bg: string; color: string; label: string; 
 
 export function PurchaseRequestsPage() {
   const qc = useQueryClient();
+
   const [selected, setSelected] = useState<PurchaseRequest|null>(null);
   const [notes, setNotes] = useState('');
   const [copiedCreds, setCopiedCreds] = useState('');
@@ -46,11 +54,15 @@ export function PurchaseRequestsPage() {
   const rejectMutation = useMutation({
     mutationFn: ({ id, notes }: { id: string; notes: string }) =>
       api.post(`/admin/checkout/reject/${id}`, { notes }).then(r => r.data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['purchase-requests'] }); setSelected(null); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['purchase-requests'] });
+      setSelected(null);
+    },
   });
 
   const createUserMutation = useMutation({
-    mutationFn: (form: typeof createForm) => api.post('/admin/checkout/create-user', form).then(r => r.data),
+    mutationFn: (form: typeof createForm) =>
+      api.post('/admin/checkout/create-user', form).then(r => r.data),
     onSuccess: (data) => {
       setCopiedCreds(`Email: ${data.data.email}\nSenha: ${data.data.password}\nPlano: ${data.data.plan}`);
       setShowCreate(false);
@@ -60,14 +72,45 @@ export function PurchaseRequestsPage() {
 
   const pending = requests.filter(r => r.status === 'payment_sent').length;
 
-  const s: Record<string, React.CSSProperties> = {
-    card:    { background: '#111118', border: '1px solid #2a2a38', borderRadius: 12, padding: '1.25rem' },
-    inp:     { width: '100%', background: '#1a1a24', border: '1px solid #2a2a38', borderRadius: 8, color: '#e8e8f0', padding: '.575rem .75rem', fontSize: '.875rem', fontFamily: 'inherit', outline: 'none', marginBottom: '.75rem' },
-    btn:     (bg: string, fg = '#fff') => ({ padding: '.625rem 1.25rem', borderRadius: 9, border: 'none', background: bg, color: fg, cursor: 'pointer', fontWeight: 600, fontSize: '.85rem', display: 'inline-flex', alignItems: 'center', gap: '.4rem' }),
+  // ✅ TIPAGEM CORRIGIDA AQUI
+  const s = {
+    card: {
+      background: '#111118',
+      border: '1px solid #2a2a38',
+      borderRadius: 12,
+      padding: '1.25rem'
+    } as React.CSSProperties,
+
+    inp: {
+      width: '100%',
+      background: '#1a1a24',
+      border: '1px solid #2a2a38',
+      borderRadius: 8,
+      color: '#e8e8f0',
+      padding: '.575rem .75rem',
+      fontSize: '.875rem',
+      fontFamily: 'inherit',
+      outline: 'none',
+      marginBottom: '.75rem'
+    } as React.CSSProperties,
+
+    btn: (bg: string, fg = '#fff'): React.CSSProperties => ({
+      padding: '.625rem 1.25rem',
+      borderRadius: 9,
+      border: 'none',
+      background: bg,
+      color: fg,
+      cursor: 'pointer',
+      fontWeight: 600,
+      fontSize: '.85rem',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '.4rem'
+    }),
   };
 
   return (
-    <div style={{ padding: '2.5rem', maxWidth: 1000 }}>
+<div style={{ padding: '2.5rem', maxWidth: 1000 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
         <div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 700 }}>Solicitações de Compra</h1>
