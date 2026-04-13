@@ -28,6 +28,9 @@ import { urlShortenerRouter, redirectRouter, migrateUrlShortener } from './app2/
 // ── App5 (Converter) routes ────────────────────────────────────
 import { converterRouter } from './app5/converter.routes';
 
+// ── App6 (Bio Link) routes ─────────────────────────────────────
+import { bioRouter, bioPublicRouter, migrateBioLink } from './app6/biolink.routes';
+
 const app = express();
 const server = createServer(app);
 
@@ -37,6 +40,9 @@ async function bootstrap() {
 
   // Run App2 migrations
   await migrateUrlShortener();
+
+  // Run App6 migrations
+  await migrateBioLink();
 
   setupMiddleware(app);
   setupRoutes(app);
@@ -68,6 +74,13 @@ async function bootstrap() {
     res.sendFile(path.join(app4Dist, 'index.html'));
   });
 
+  // ── Serve App6 (Bio Link) static files at /app6 ──────────
+  const app6Dist = path.join(__dirname, '../../apps/app6-biolink/client/dist');
+  app.use('/app6', express.static(app6Dist));
+  app.get('/app6/*', (_req: Request, res: Response) => {
+    res.sendFile(path.join(app6Dist, 'index.html'));
+  });
+
   // ── Serve App2 (URL Shortener) static files at /app2 ──────
   const app2Dist = path.join(__dirname, '../../apps/app2-urlshortener/client/dist');
   app.use('/app2', express.static(app2Dist));
@@ -80,6 +93,11 @@ async function bootstrap() {
 
   // ── Mount App5 (Converter) API routes ─────────────────────
   app.use('/api/converter', converterRouter);
+
+  // ── Mount App6 (Bio Link) API + public pages ───────────────
+  app.use('/api/bio', bioRouter);
+  app.use('/bio', bioPublicRouter);        // public: /bio/:username
+  app.use('/bio-click', bioPublicRouter);  // click tracker: /bio-click/:id
 
   // ── Serve App5 (Converter) static files at /app5 ──────────
   const app5Dist = path.join(__dirname, '../../apps/app5-converter/client/dist');

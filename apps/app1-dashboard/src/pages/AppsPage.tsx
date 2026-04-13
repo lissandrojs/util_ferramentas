@@ -10,6 +10,7 @@ const APP_ICONS: Record<string, string> = {
   app3: '🗃️',
   app4: '⬇️',
   app5: '🔄',
+  app6: '🔗',
 };
 
 const APP_DESCRIPTIONS: Record<string, { tagline: string; features: string[] }> = {
@@ -32,6 +33,10 @@ const APP_DESCRIPTIONS: Record<string, { tagline: string; features: string[] }> 
   app5: {
     tagline: 'Conversor — Transforme JSON em Excel e vice-versa',
     features: ['JSON → Excel com múltiplas abas', 'Excel/CSV → JSON', 'Mapeamento de campos', 'Preview antes de exportar'],
+  },
+  app6: {
+    tagline: 'Bio Link — Crie sua página "link na bio" em segundos',
+    features: ['Página pública em /bio/seuusuario', 'Múltiplos links com ícones', 'Analytics de visitas e cliques', '5 temas + cor personalizada'],
   },
 };
 

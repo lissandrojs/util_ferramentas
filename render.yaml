@@ -15,6 +15,7 @@ services:
       cd ../app3-datamanager/client && npm install && npm run build &&
       cd ../../../apps/app4-videodownloader/client && npm install && npm run build &&
       cd ../app5-converter/client && npm install && npm run build &&
+      cd ../app6-biolink/client && npm install && npm run build &&
       cd ../../gateway && npm install --include=dev && npm run build
     startCommand: npm start
     plan: free

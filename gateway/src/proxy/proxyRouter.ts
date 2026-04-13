@@ -44,6 +44,13 @@ export const APP_REGISTRY: AppConfig[] = [
     protected: false,
     description: 'Conversor JSON ↔ Excel/CSV',
   },
+  {
+    key: 'app6',
+    pathPrefix: '/app6',
+    target: 'internal',
+    protected: false,
+    description: 'Bio Link — Página na Bio',
+  },
 ];
 
 function buildProxyOptions(appConfig: AppConfig): Options {
