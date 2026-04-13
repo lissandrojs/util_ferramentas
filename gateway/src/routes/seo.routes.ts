@@ -188,6 +188,7 @@ ${ADSENSE_ID ? `<script async src="https://pagead2.googlesyndication.com/pagead/
       <a href="/converter-mp3">MP3</a>
       <a href="/encurtar-links">Links</a>
       <a href="/converter-json-excel">JSON↔Excel</a>
+      <a href="/link-na-bio">Bio Link</a>
       <a href="/sobre">Sobre</a>
     </nav>
     <a href="/app4" class="btn-sm">Usar grátis →</a>
@@ -209,6 +210,7 @@ ${ADSENSE_ID ? `<script async src="https://pagead2.googlesyndication.com/pagead/
       <a href="/converter-mp3">Converter MP3</a>
       <a href="/encurtar-links">Encurtar Links</a>
       <a href="/converter-json-excel">JSON↔Excel</a>
+      <a href="/link-na-bio">Bio Link</a>
       <a href="/sobre">Sobre</a>
       <a href="/privacidade">Privacidade</a>
       <a href="/termos">Termos</a>
@@ -257,12 +259,14 @@ seoRouter.get('/sitemap.xml', (_req, res) => {
     ['/converter-mp3',         '0.9', 'monthly', today],
     ['/encurtar-links',        '0.8', 'monthly', today],
     ['/converter-json-excel',  '0.8', 'monthly', today],
+    ['/link-na-bio',           '0.8', 'monthly', today],
     ['/sobre',                 '0.6', 'monthly', today],
     ['/privacidade',           '0.4', 'yearly',  today],
     ['/termos',                '0.4', 'yearly',  today],
     ['/checkout.html',         '0.9', 'monthly', today],
     ['/app4',                  '0.8', 'weekly',  today],
     ['/app5',                  '0.7', 'weekly',  today],
+    ['/app6',                  '0.7', 'weekly',  today],
   ];
 
   const items = urls.map(([loc, pri, freq, mod]) =>
@@ -1236,6 +1240,169 @@ seoRouter.get('/termos', (_req, res) => {
     title: `Termos de Uso — ${SITE_NAME}`,
     description: `Termos de uso do ${SITE_NAME}. Regras de uso das ferramentas de download de vídeos, conversão MP3, JSON para Excel e encurtador de links.`,
     canonical: `${SITE_URL}/termos`,
+    schema,
+    body,
+  }));
+});
+
+// ──────────────────────────────────────────────────────────────────
+// LINK NA BIO — App6
+// ──────────────────────────────────────────────────────────────────
+seoRouter.get('/link-na-bio', (_req, res) => {
+  setHtmlHeaders(res);
+  const schema = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: 'Link na Bio: o que é e como criar sua página gratuita',
+      author: { '@type': 'Organization', name: SITE_NAME, url: SITE_URL },
+      publisher: { '@type': 'Organization', name: SITE_NAME, logo: { '@type': 'ImageObject', url: OG_IMAGE } },
+      datePublished: '2024-01-01',
+      dateModified: new Date().toISOString().split('T')[0],
+      mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE_URL}/link-na-bio` },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+        { '@type': 'ListItem', position: 2, name: 'Link na Bio', item: `${SITE_URL}/link-na-bio` },
+      ],
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'Util Ferramentas — Bio Link',
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: 'Web',
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL' },
+      description: 'Crie sua página "link na bio" gratuita com múltiplos links, analytics e temas personalizados.',
+      url: `${SITE_URL}/app6`,
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: [
+        { '@type': 'Question', name: 'O que é "link na bio"?', acceptedAnswer: { '@type': 'Answer', text: 'Link na bio é uma página com vários links compartilhada pelo Instagram. Como o Instagram permite apenas um link no perfil, essa página centraliza todos os seus links em um único endereço.' } },
+        { '@type': 'Question', name: 'Como criar link na bio grátis?', acceptedAnswer: { '@type': 'Answer', text: 'Acesse o App6 do Util Ferramentas, escolha um nome de usuário e adicione seus links. Sua página ficará disponível em util-ferramentas.onrender.com/bio/seunome.' } },
+        { '@type': 'Question', name: 'Qual a diferença entre Linktree e o Util Ferramentas?', acceptedAnswer: { '@type': 'Answer', text: 'O Util Ferramentas é gratuito, sem limite de links, com analytics de visitas e cliques, temas personalizáveis e não exige assinatura para recursos básicos.' } },
+      ],
+    },
+  ];
+
+  const body = `
+<nav aria-label="Breadcrumb" class="breadcrumb">
+  <a href="/">Início</a><span>›</span><span>Link na Bio</span>
+</nav>
+<span class="tag">Gratuito</span><span class="tag">Instagram</span><span class="tag">TikTok</span>
+
+<h1>Link na bio: o que é e como criar sua página gratuita</h1>
+<p class="lead">Aprenda a criar sua página de "link na bio" em menos de 2 minutos — reúna todos os seus links importantes em uma única URL para compartilhar no Instagram, TikTok e WhatsApp.</p>
+
+<div class="stats">
+  <div class="stat"><strong>1</strong><span>URL para tudo</span></div>
+  <div class="stat"><strong>∞</strong><span>links ilimitados</span></div>
+  <div class="stat"><strong>5</strong><span>temas visuais</span></div>
+  <div class="stat"><strong>0</strong><span>custo</span></div>
+</div>
+
+<h2>O que é "link na bio"?</h2>
+<p>O Instagram permite apenas <strong>um único link</strong> na bio do perfil. Para quem precisa compartilhar múltiplos links — loja online, YouTube, WhatsApp, portfólio, blog — isso é uma limitação enorme.</p>
+<p>A solução foi criar as chamadas "páginas de link na bio": uma página web simples com vários botões, cada um levando para um destino diferente. Você coloca o link dessa página na bio do Instagram e pronto — todos os seus links em um só lugar.</p>
+
+<h2>Para que serve e quem usa</h2>
+<div class="cards">
+  <div class="card"><div class="icon">🛍️</div><h3>Lojistas</h3><p>Link para a loja, WhatsApp de vendas, catálogo e Instagram do negócio em uma só página.</p></div>
+  <div class="card"><div class="icon">🎤</div><h3>Criadores de Conteúdo</h3><p>YouTube, TikTok, Spotify, site de parcerias e contato — tudo centralizado.</p></div>
+  <div class="card"><div class="icon">💼</div><h3>Profissionais</h3><p>LinkedIn, portfólio, currículo online e e-mail de contato em uma URL só.</p></div>
+  <div class="card"><div class="icon">🎵</div><h3>Músicos e Artistas</h3><p>Streaming, loja de merch, agenda de shows e redes sociais em um link.</p></div>
+</div>
+
+<h2>Como criar sua página de link na bio no Util Ferramentas</h2>
+<ol class="step-list">
+  <li><strong>Acesse o App6</strong> — abra o <a href="/app6">Util Ferramentas Bio Link</a></li>
+  <li><strong>Escolha um nome de usuário</strong> — sua página ficará em <code>/bio/seunome</code></li>
+  <li><strong>Adicione seus links</strong> — título, URL e ícone para cada link</li>
+  <li><strong>Personalize o visual</strong> — escolha o tema (escuro, claro, gradiente) e a cor de destaque</li>
+  <li><strong>Copie o link</strong> — <code>util-ferramentas.onrender.com/bio/seunome</code></li>
+  <li><strong>Cole na bio do Instagram</strong> — pronto! Todos os seus links em um só lugar</li>
+</ol>
+<div class="tip"><strong>💡 Dica:</strong> Escolha um nome de usuário simples e igual ao seu @ no Instagram para facilitar a memorização. Ex: se seu Instagram é @joaopaulo, use /bio/joaopaulo</div>
+
+<h2>Funcionalidades da página Bio Link</h2>
+<ul>
+  <li><strong>Links ilimitados</strong> — adicione quantos links quiser</li>
+  <li><strong>Ícones automáticos</strong> — Instagram, TikTok, YouTube, WhatsApp, Spotify e outros reconhecidos automaticamente</li>
+  <li><strong>Analytics de visitas</strong> — veja quantas pessoas acessaram sua página por dia</li>
+  <li><strong>Analytics de cliques</strong> — saiba quais links são mais clicados</li>
+  <li><strong>Temas visuais</strong> — escuro, claro, gradiente e mais</li>
+  <li><strong>Cor de destaque</strong> — personalize com a cor da sua marca</li>
+  <li><strong>URL limpa</strong> — <code>/bio/seunome</code> é fácil de digitar e lembrar</li>
+</ul>
+
+<h2>Link na bio: comparação entre ferramentas</h2>
+<table>
+  <thead><tr><th>Recurso</th><th>Linktree Grátis</th><th>Later Free</th><th>Util Ferramentas</th></tr></thead>
+  <tbody>
+    <tr><td>Número de links</td><td>5 links</td><td>Ilimitado</td><td><strong>Ilimitado</strong></td></tr>
+    <tr><td>Analytics</td><td>Limitado</td><td>Básico</td><td><strong>Visitas + cliques</strong></td></tr>
+    <tr><td>Temas visuais</td><td>2 grátis</td><td>Básico</td><td><strong>5 temas + cor custom</strong></td></tr>
+    <tr><td>Remover marca do rodapé</td><td>Pago</td><td>Pago</td><td><strong>Grátis</strong></td></tr>
+    <tr><td>Domínio próprio</td><td>Pago</td><td>Não</td><td>Não (URL compartilhada)</td></tr>
+    <tr><td>Custo</td><td>Grátis / $9/mês Pro</td><td>Grátis / $18/mês</td><td><strong>100% Grátis</strong></td></tr>
+  </tbody>
+</table>
+
+<h2>Como colocar link na bio do Instagram</h2>
+<ol class="step-list">
+  <li>Crie sua página em <a href="/app6">Util Ferramentas Bio Link</a> e copie a URL</li>
+  <li>Abra o Instagram e vá no seu perfil</li>
+  <li>Toque em <strong>"Editar perfil"</strong></li>
+  <li>No campo <strong>"Site"</strong>, cole a URL da sua página bio (<code>util-ferramentas.onrender.com/bio/seunome</code>)</li>
+  <li>Toque em <strong>"Concluído"</strong></li>
+</ol>
+<p>No TikTok, o processo é similar: vá em Editar perfil → campo "Website".</p>
+
+<h2>Perguntas frequentes</h2>
+<div>
+  <div class="faq-item">
+    <h3>Preciso pagar para criar minha página bio?</h3>
+    <p>Não. O App6 é completamente gratuito, sem limite de links e sem remover sua autoria da página.</p>
+  </div>
+  <div class="faq-item">
+    <h3>Posso ter mais de uma página bio?</h3>
+    <p>Sim. Com uma conta no Util Ferramentas você pode criar múltiplas páginas bio, cada uma com um nome de usuário diferente.</p>
+  </div>
+  <div class="faq-item">
+    <h3>Minha página funciona no celular?</h3>
+    <p>Sim. As páginas são responsivas e otimizadas para visualização em smartphones — afinal, é onde a maioria das pessoas vai acessar.</p>
+  </div>
+  <div class="faq-item">
+    <h3>Posso usar no WhatsApp e no TikTok?</h3>
+    <p>Sim. O link funciona em qualquer plataforma: Instagram, TikTok, Twitter/X, YouTube, WhatsApp, Telegram, e-mail e qualquer outro lugar.</p>
+  </div>
+</div>
+
+<div class="hero-cta">
+  <a href="/app6" class="btn-primary">🔗 Criar minha página bio — grátis</a>
+  <a href="/encurtar-links" class="btn-outline">🔗 Encurtador de links</a>
+</div>
+
+<div class="related">
+  <h2>Leia também</h2>
+  <div class="related-links">
+    <a href="/encurtar-links" class="related-link"><strong>🔗 Encurtar Links</strong>Links rastreáveis com analytics</a>
+    <a href="/como-baixar-videos" class="related-link"><strong>⬇️ Baixar Vídeos</strong>YouTube, Instagram, TikTok</a>
+    <a href="/converter-mp3" class="related-link"><strong>🎵 Converter MP3</strong>Extrair áudio online</a>
+    <a href="/" class="related-link"><strong>🏠 Início</strong>Todas as ferramentas</a>
+  </div>
+</div>`;
+
+  res.send(page({
+    title: 'Link na Bio Grátis — Crie sua Página com Múltiplos Links | Util Ferramentas',
+    description: 'Crie sua página de link na bio gratuitamente. Reúna todos os seus links do Instagram, TikTok e YouTube em uma única URL. Analytics, temas personalizados, sem limite de links.',
+    canonical: `${SITE_URL}/link-na-bio`,
+    ogType: 'article',
     schema,
     body,
   }));

@@ -94,16 +94,18 @@ async function runMigrations(pool: Pool): Promise<void> {
 
       -- Seed default plan permissions (idempotent)
       INSERT INTO plan_apps (plan, app_key, can_access) VALUES
-        -- FREE plan: only app4 (video downloader) and app5 (converter)
+        -- FREE plan: app4 (video downloader), app5 (converter), app6 (bio link)
         ('free', 'app4', true),
         ('free', 'app5', true),
+        ('free', 'app6', true),
         ('free', 'app2', false),
         ('free', 'app3', false),
         -- PRO plan: everything
         ('pro',  'app2', true),
         ('pro',  'app3', true),
         ('pro',  'app4', true),
-        ('pro',  'app5', true)
+        ('pro',  'app5', true),
+        ('pro',  'app6', true)
       ON CONFLICT (plan, app_key) DO NOTHING;
 
       -- ── Purchase requests (replaces complex license system) ──────

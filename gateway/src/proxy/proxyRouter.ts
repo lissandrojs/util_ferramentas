@@ -49,6 +49,13 @@ export const APP_REGISTRY: AppConfig[] = [
     pathPrefix: '/app6',
     target: 'internal',
     protected: false,
+    description: 'Link na Bio',
+  },
+  {
+    key: 'app6',
+    pathPrefix: '/app6',
+    target: 'internal',
+    protected: false,
     description: 'Bio Link — Página na Bio',
   },
 ];

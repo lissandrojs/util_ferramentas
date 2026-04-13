@@ -37,6 +37,10 @@ services:
         sync: false
       - key: PIX_MERCHANT_CITY
         sync: false
+      - key: PIX_QR_IMAGE_URL
+        sync: false
+      - key: PRO_PLAN_PRICE_CENTS
+        value: "2990"
       - key: SITE_URL
         value: https://util-ferramentas.onrender.com
       - key: SITE_NAME

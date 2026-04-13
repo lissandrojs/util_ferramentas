@@ -8,6 +8,7 @@ const APP_META: Record<string, { name: string; icon: string; path: string }> = {
   app3: { name: 'Gerenciador de Dados', icon: '🗃️', path: '/app3' },
   app4: { name: 'Video Downloader', icon: '⬇️', path: '/app4' },
   app5: { name: 'Conversor JSON↔Excel', icon: '🔄', path: '/app5' },
+  app6: { name: 'Bio Link', icon: '🔗', path: '/app6' },
 };
 
 const PLANS = ['free', 'pro'];
