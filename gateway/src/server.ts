@@ -192,7 +192,7 @@ function errorHandler(err: Error, req: Request, res: Response, _next: NextFuncti
     });
   }
   logger.error(`Unhandled error on ${req.method} ${req.path}: ${err.message}`);
-  return res.status(500).json({ success: false, error: 'Internal server error' });
+  return res.status(500).json({ success: false, error: 'Erro interno do servidor' });
 }
 
 bootstrap().catch((err) => {

@@ -15,7 +15,7 @@ export const rateLimiter = rateLimit({
   handler: (_req: Request, res: Response) => {
     res.status(429).json({
       success: false,
-      error: 'Too many requests, please try again later.',
+      error: 'Muitas requisições. Tente novamente em alguns minutos.',
       code: 'RATE_LIMIT_EXCEEDED',
     });
   },
@@ -31,7 +31,7 @@ export const authRateLimiter = rateLimit({
   handler: (_req: Request, res: Response) => {
     res.status(429).json({
       success: false,
-      error: 'Too many login attempts. Please try again in 15 minutes.',
+      error: 'Muitas tentativas de login. Tente novamente em 15 minutos.',
       code: 'AUTH_RATE_LIMIT_EXCEEDED',
     });
   },
@@ -51,9 +51,9 @@ export function createUsageLimiter(freePlanMax: number, proPlanMax: number) {
     handler: (_req: Request, res: Response) => {
       res.status(429).json({
         success: false,
-        error: 'Daily usage limit reached. Upgrade to Pro for higher limits.',
+        error: 'Limite diário atingido. Faça upgrade para o plano Pro.',
         code: 'USAGE_LIMIT_EXCEEDED',
-        upgradeUrl: '/app1/billing',
+        upgradeUrl: '/checkout.html',
       });
     },
   });

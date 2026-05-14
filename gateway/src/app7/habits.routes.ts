@@ -15,7 +15,7 @@ export async function migrateHabits(): Promise<void> {
       tenant_id   UUID NOT NULL,
       title       VARCHAR(120) NOT NULL,
       description TEXT,
-      icon        VARCHAR(10)  NOT NULL DEFAULT '✅',
+      icon        VARCHAR(10)  NOT NULL DEFAULT 'check',
       color       VARCHAR(20)  NOT NULL DEFAULT '#6c63ff',
       frequency   VARCHAR(20)  NOT NULL DEFAULT 'daily',
       target_days INTEGER[]    NOT NULL DEFAULT '{1,2,3,4,5,6,0}',
@@ -23,23 +23,23 @@ export async function migrateHabits(): Promise<void> {
       order_index INTEGER      NOT NULL DEFAULT 0,
       created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
       archived_at TIMESTAMPTZ
-    );
-
-    CREATE TABLE IF NOT EXISTS habit_completions (
-      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      habit_id   UUID        NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
-      user_id    UUID        NOT NULL,
-      completed_on DATE      NOT NULL,
-      note       TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      UNIQUE (habit_id, completed_on)
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_habits_user      ON habits(user_id);
-    CREATE INDEX IF NOT EXISTS idx_habits_tenant    ON habits(tenant_id);
-    CREATE INDEX IF NOT EXISTS idx_completions_habit ON habit_completions(habit_id);
-    CREATE INDEX IF NOT EXISTS idx_completions_user  ON habit_completions(user_id, completed_on);
+    )
   `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS habit_completions (
+      id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      habit_id     UUID        NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+      user_id      UUID        NOT NULL,
+      completed_on DATE        NOT NULL,
+      note         TEXT,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (habit_id, completed_on)
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_habits_user       ON habits(user_id)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_habits_tenant     ON habits(tenant_id)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_completions_habit ON habit_completions(habit_id)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_completions_user  ON habit_completions(user_id, completed_on)`);
   logger.info('✅ Habits tables ready');
 }
 

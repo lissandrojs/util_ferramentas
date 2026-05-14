@@ -5,6 +5,7 @@ import { authenticate, requireRole, generateTokens } from '../middleware/auth';
 import { AppError } from '../utils/AppError';
 import bcrypt from 'bcryptjs';
 import { logger } from '../utils/logger';
+import { sendWelcomeEmail } from '../services/email.service';
 
 export const checkoutRouter = Router();    // public
 export const adminCheckoutRouter = Router(); // admin only
@@ -210,12 +211,21 @@ adminCheckoutRouter.post('/approve/:id', async (req: Request, res: Response) => 
 
   logger.info(`Purchase approved: ${request.email} plan=${request.plan} by ${req.user!.email}`);
 
+  // Send welcome email with credentials (fire and forget — don't block response)
+  sendWelcomeEmail({
+    to:       request.email,
+    name:     request.name,
+    password,
+    plan:     request.plan,
+    loginUrl: `${process.env.SITE_URL || ''}/app1`,
+  }).catch(err => logger.error('Welcome email failed: ' + err.message));
+
   return res.json({
     success: true,
     message: `Conta criada para ${request.email}`,
     data: {
       email:    request.email,
-      password, // return to admin so they can send to user
+      password,
       plan:     request.plan,
     },
   });
